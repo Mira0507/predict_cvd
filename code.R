@@ -36,9 +36,9 @@ comm <- MakeTable_fn("UNdata_Export_communicable.csv",
 cvd <- MakeTable_fn("UNdata_Export_cvd.csv",
                     "Cardiovascular_Disease")
 injur <- MakeTable_fn("UNdata_Export_injuries.csv",
-                      "Injuries")
+                      "Injury")
 noncomm <- MakeTable_fn("UNdata_Export_noncommunicable.csv",
-                        "Noncommucable")
+                        "Noncommunicable")
 
 de <- rbind(all, cancer, resp, comm, cvd, injur, noncomm) %>%
         spread(Cause, Value)
@@ -111,12 +111,43 @@ de1 <- de %>%
 
 
 
-
-
+de1_gathered <- gather(de1, Cause, Number, c(All, 
+                                             Cancer, 
+                                             Cardiovascular_Disease,
+                                             Communicable,
+                                             Injury,
+                                             Noncommunicable,
+                                             Respiratory_Disease))
+de1_subset <- subset(de1_gathered, Cause %in% c("Cardiovascular_Disease",
+                                                "Cancer",
+                                                "Communicable",
+                                                "Injury",
+                                                "Noncommunicable",
+                                                "Respiratory_Disease"))      
 
 # Outlier filtering
 de2 <- de1 %>% 
-        filter(Cardiovascular_Disease < 750)
+        filter(Cancer < 250,
+               Cardiovascular_Disease < 750,
+               Communicable < 1000,
+               Injury < 250,
+               Noncommunicable < 1250,
+               Respiratory_Disease < 150)
+
+de2_gathered <- gather(de2, Cause, Number, c(All, 
+                                             Cancer, 
+                                             Cardiovascular_Disease,
+                                             Communicable,
+                                             Injury,
+                                             Noncommunicable,
+                                             Respiratory_Disease)) 
+        
+de2_subset <- subset(de2_gathered, Cause %in% c("Cardiovascular_Disease",
+                                                "Cancer",
+                                                "Communicable",
+                                                "Injury",
+                                                "Noncommunicable",
+                                                "Respiratory_Disease"))      
 
 
 
@@ -129,8 +160,8 @@ vr <- var(de2$Cardiovascular_Disease)
 fm <- as.formula(Cardiovascular_Disease ~ 
                          Cancer + 
                          Communicable + 
-                         Injuries + 
-                         Noncommucable + 
+                         Injury + 
+                         Noncommunicable + 
                          Respiratory_Disease)
 
 
@@ -182,6 +213,11 @@ RMSE <- de2 %>%
                   SD = sd(Cardiovascular_Disease)) %>%
         gather(Category, Value)
 
+# Correlation 
+Corr <- de2 %>% 
+        summarize(corQ = cor(Cardiovascular_Disease, predQ),
+                  corR = cor(Cardiovascular_Disease, predR))
+
 # data cleaning for plotting 
 de3 <- de2 %>%
         gather(Prediction_Model, 
@@ -195,30 +231,64 @@ de3 <- de2 %>%
 #################################### Plotting ####################################
 
 
-# Outlier clarification
-check_outlier_plot <- 
-        ggplot(de1, 
-               aes(y = Cardiovascular_Disease)) + 
-        geom_boxplot(aes(fill = "#669900")) + 
-        geom_hline(yintercept = 750, color = "red", size = 1) + 
+# Check Outlier Countries
+check_box_plot1 <- 
+        ggplot(de1_subset,
+               aes(x = Cause, 
+                   y = Number,
+                   fill = Cause)) + 
+        geom_boxplot(alpha = 0.5) +
         theme_bw() + 
-        theme(axis.text.x = element_blank(),
-              legend.position = "none") +
-        ggtitle("Deaths from Cardiovascular Disease per Country") +
-        ylab("Number")
+        theme(axis.text.x = element_blank()) + 
+        ggtitle("Distribution of Death Number from Various Causes") 
+
+
+# Check Distribution of Input Data 
+DensityPlot_fn <- function(df, tit,xtit) {
+        ggplot(df,
+               aes(x = Number,
+                   fill = Cause,
+                   color = Cause)) + 
+                geom_density(alpha = 0.3) +
+                theme_bw() + 
+                ggtitle(tit) +
+                ylab("Density") + 
+                xlab(xtit)
+}
+check_density_plot1 <- 
+        DensityPlot_fn(de1_subset,
+                       "Distribution of Death Number from Various Causes",
+                       "Number")
+
+check_density_plot2 <- 
+        DensityPlot_fn(de1_subset,
+                       "Distribution of Death Number from Various Causes",
+                       "Number (Log)") + 
+        scale_x_log10()
+
+library(gridExtra)
+grid.arrange(check_density_plot1,
+             check_density_plot2,
+             ncol = 1)
 
 
 # Check distribution of outcome
-check_distribution_plot <-
-        ggplot(de2, 
-               aes(x = Cardiovascular_Disease,
-                   fill = "#669900")) +
-        geom_density() + 
-        theme_bw() + 
-        ggtitle("Distribution of Deaths from Cardiovascular Disease per Country") +
-        ylab("Density") +
-        xlab("Deaths") + 
-        theme(legend.position = "none")
+check_density_plot3 <-
+        DensityPlot_fn(de2_subset,
+                       "Distribution of Death Number from Various Causes",
+                       "Number")
+
+check_density_plot4 <-
+        DensityPlot_fn(de2_subset,
+                       "Distribution of Death Number from Various Causes",
+                       "Number (Log)")+ 
+        scale_x_log10()
+
+
+grid.arrange(check_density_plot3,
+             check_density_plot4,
+             ncol = 1)
+
 
 # outcome vs prediction
 outcome_vs_prediction <- 
@@ -266,7 +336,7 @@ residual_plotR <- resid_fn(de2,
                            "#009933",
                            "Residuals in Random Forests")
 
-library(gridExtra)
+
 grid.arrange(residual_plotQ,
              residual_plotR, nrow = 1)
 
