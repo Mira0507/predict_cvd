@@ -61,7 +61,7 @@ new_name <- c("Bahamas, The",
               "St. Kitts and Nevis",
               "St. Lucia",
               "St. Vincent and the Grenadines",
-              "São Tomé and Principe",
+              "S?o Tom? and Principe",
               "Slovak Republic",
               "Eswatini",
               "North Macedonia",
@@ -194,12 +194,12 @@ de3 <- de2 %>%
 
 #################################### Plotting ####################################
 
+
 # Outlier clarification
 check_outlier_plot <- 
         ggplot(de1, 
                aes(y = Cardiovascular_Disease)) + 
-        geom_boxplot(outlier.alpha = 0.5, 
-                     aes(fill = "#669900")) + 
+        geom_boxplot(aes(fill = "#669900")) + 
         geom_hline(yintercept = 750, color = "red", size = 1) + 
         theme_bw() + 
         theme(axis.text.x = element_blank(),
@@ -228,7 +228,7 @@ outcome_vs_prediction <-
         geom_point(alpha = 0.3) + 
         geom_smooth(method = "lm", se = F) +
         theme_bw() + 
-        ggtitle("Deaths from Cardiovascular Disease (Actual Outcome vs Prediction") +
+        ggtitle("Deaths from Cardiovascular Disease (Actual Outcome vs Prediction)") +
         xlab("Prediction") + 
         ylab("Actual Outcome")
 
@@ -240,7 +240,7 @@ RMSE_plot <-
         geom_bar(stat = "identity", width = 0.8) +
         theme_bw() + 
         theme(axis.text.x = element_blank()) + 
-        ggtitle("Comparison of RMSE between Quassi-Poisson Regression and Random Forests")
+        ggtitle("Comparison of RMSE between Quasi-Poisson Regression and Random Forests")
 
 # Residuals 
 resid_fn <- function(df, xcol, ycol, c, tit) {
