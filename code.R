@@ -182,6 +182,11 @@ RMSE <- de2 %>%
                   SD = sd(Cardiovascular_Disease)) %>%
         gather(Category, Value)
 
+# Correlation 
+Corr <- de2 %>% 
+        summarize(corQ = cor(Cardiovascular_Disease, predQ),
+                  corR = cor(Cardiovascular_Disease, predR))
+
 # data cleaning for plotting 
 de3 <- de2 %>%
         gather(Prediction_Model, 
