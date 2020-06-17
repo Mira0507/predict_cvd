@@ -322,7 +322,8 @@ resid_fn <- function(df, xcol, ycol, c, tit) {
                 theme_bw() + 
                 xlab("Prediction") + 
                 ylab("Residual") + 
-                ggtitle(tit)
+                ggtitle(tit) + 
+                ylim(NA, 400)
 }
 residual_plotQ <- resid_fn(de2, 
                            de2$predQ,
@@ -334,7 +335,7 @@ residual_plotR <- resid_fn(de2,
                            de2$predR,
                            de2$residR,
                            "#009933",
-                           "Residuals in Random Forests")
+                           "Residuals in Random Forests") 
 
 
 grid.arrange(residual_plotQ,
