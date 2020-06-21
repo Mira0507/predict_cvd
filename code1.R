@@ -8,8 +8,8 @@ h <- head
 s <- summary
 
 
-
 #################################### Importing and Data Cleaning ####################################
+
 
 # Importing data 
 region <- read_excel("CLASS.xls", sheet = 1, skip = 4)[-1, c(3, 4, 6, 7)]
@@ -145,7 +145,7 @@ de2_gathered <- gather(de2, Cause, Number, c(All,
                                              Injury,
                                              Noncommunicable,
                                              Respiratory_Disease)) 
-        
+
 de2_subset <- subset(de2_gathered, Cause %in% c("Cardiovascular_Disease",
                                                 "Cancer",
                                                 "Communicable",
@@ -153,18 +153,15 @@ de2_subset <- subset(de2_gathered, Cause %in% c("Cardiovascular_Disease",
                                                 "Noncommunicable",
                                                 "Respiratory_Disease"))      
 
+de4 <- de2
+
 
 #################################### Fitting Models ####################################
 
 
-
-# Comparing mean vs variance: var >>>>> mean. Do quasipoisson regression
-mn <- mean(de2$Cardiovascular_Disease)
-vr <- var(de2$Cardiovascular_Disease)
-
-
 # formula 
-fm <- as.formula(Cardiovascular_Disease ~ 
+
+fm1 <- as.formula(Cardiovascular_Disease ~ 
                          Cancer + 
                          Communicable + 
                          Injury + 
@@ -172,61 +169,59 @@ fm <- as.formula(Cardiovascular_Disease ~
                          Respiratory_Disease)
 
 
+fm2 <- as.formula(Cardiovascular_Disease ~ 
+                         Cancer + 
+                         Communicable + 
+                         Injury + 
+                         Noncommunicable + 
+                         Respiratory_Disease + 
+                         Region + 
+                         Income_Group)
+
 
 library(vtreat) 
 library(ranger)
-de2 <- de2 %>%
-        mutate(predQ = 0,
-               predR = 0)
+de4 <- de4 %>%
+        mutate(pred1 = 0,
+               pred2 = 0)
 
 # quasi-poisson regression
 set.seed(1326)
-splitPlan <- kWayCrossValidation(nrow(de2), 4, NULL, NULL)
+splitPlan <- kWayCrossValidation(nrow(de4), 4, NULL, NULL)
 
 for (i in 1:4) {
         split <- splitPlan[[i]]
-        modelQ <- glm(fm, data = de2[split$train, ], family = quasipoisson)
-        de2$predQ[split$app] <- predict(modelQ, 
-                                        newdata = de2[split$app, ],
-                                        type = "response")
-}
-
-
-# random forest (ranger)
-
-set.seed(1326)
-splitPlan <- kWayCrossValidation(nrow(de2), 4, NULL, NULL)
-
-for (i in 1:4) {
-        split <- splitPlan[[i]]
-        modelR <- ranger(fm, 
-                         data = de2[split$train, ], num.trees = 500, 
+        model1 <- ranger(fm1, 
+                         data = de4[split$train, ], num.trees = 500, 
                          respect.unordered.factors = "order",
                          seed = 251)
-        de2$predR[split$app] <- predict(modelR, de2[split$app, ])$predictions
+        model2 <- ranger(fm2, 
+                         data = de4[split$train, ], num.trees = 500, 
+                         respect.unordered.factors = "order",
+                         seed = 251)
+        de4$pred1[split$app] <- predict(model1, de4[split$app, ])$predictions
+        de4$pred2[split$app] <- predict(model2, de4[split$app, ])$predictions
 }
 
 
 
-#################################### Evaludation ####################################
+#################################### Evaluation ####################################
 
-
-
-de2 <- de2 %>%
-        mutate(residQ = predQ - Cardiovascular_Disease,
-               residR = predR - Cardiovascular_Disease)
+de4 <- de4 %>%
+        mutate(resid1 = pred1 - Cardiovascular_Disease,
+               resid2 = pred2 - Cardiovascular_Disease)
 
 # RMSE 
-RMSE <- de2 %>% 
-        summarize(RMSE_QuassiPoisson = sqrt(mean(residQ^2)),
-                  RMSE_RandomForests = sqrt(mean(residR^2)),
+RMSE_R <- de4 %>% 
+        summarize(RMSE1 = sqrt(mean(resid1^2)),
+                  RMSE2 = sqrt(mean(resid2^2)),
                   SD = sd(Cardiovascular_Disease)) %>%
         gather(Category, Value)
 
 # Correlation 
-Corr <- de2 %>% 
-        summarize(corQ = cor(Cardiovascular_Disease, predQ),
-                  corR = cor(Cardiovascular_Disease, predR))
+Corr_R <- de4 %>% 
+        summarize(cor1 = cor(Cardiovascular_Disease, pred1),
+                  cor2 = cor(Cardiovascular_Disease, pred2))
 
 
 #################################### Additional Data Cleaning ####################################
@@ -234,80 +229,21 @@ Corr <- de2 %>%
 
 
 # data cleaning for plotting 
-de3 <- de2 %>%
+de5 <- de4 %>%
         gather(Prediction_Model, 
                Prediction_Value, 
-               c(predQ, predR)) %>%
-        mutate(Prediction_Model = ifelse(Prediction_Model == "predQ", 
-                                         "Quasi-Poisson Regression",
-                                         "Random Forests"))  
+               c(pred1, pred2)) %>%
+        mutate(Prediction_Model = ifelse(Prediction_Model == "pred1", 
+                                         "With Region and Income",
+                                         "Without Region and Income"))  
 
 
 #################################### Plotting ####################################
 
 
-# Check Outlier Countries
-check_box_plot1 <- 
-        ggplot(de1_subset,
-               aes(x = Cause, 
-                   y = Number,
-                   fill = Cause)) + 
-        geom_boxplot(alpha = 0.5) +
-        theme_bw() + 
-        theme(axis.text.x = element_blank()) + 
-        ggtitle("Distribution of Death Number from Various Causes") 
-
-
-# Check Distribution of Input Data 
-DensityPlot_fn <- function(df, tit,xtit) {
-        ggplot(df,
-               aes(x = Number,
-                   fill = Cause,
-                   color = Cause)) + 
-                geom_density(alpha = 0.3) +
-                theme_bw() + 
-                ggtitle(tit) +
-                ylab("Density") + 
-                xlab(xtit)
-}
-check_density_plot1 <- 
-        DensityPlot_fn(de1_subset,
-                       "Distribution of Death Number from Various Causes",
-                       "Number")
-
-check_density_plot2 <- 
-        DensityPlot_fn(de1_subset,
-                       "Distribution of Death Number from Various Causes",
-                       "Number (Log)") + 
-        scale_x_log10()
-
-library(gridExtra)
-grid.arrange(check_density_plot1,
-             check_density_plot2,
-             ncol = 1)
-
-
-# Check distribution of outcome
-check_density_plot3 <-
-        DensityPlot_fn(de2_subset,
-                       "Distribution of Death Number from Various Causes",
-                       "Number")
-
-check_density_plot4 <-
-        DensityPlot_fn(de2_subset,
-                       "Distribution of Death Number from Various Causes",
-                       "Number (Log)")+ 
-        scale_x_log10()
-
-
-grid.arrange(check_density_plot3,
-             check_density_plot4,
-             ncol = 1)
-
-
 # outcome vs prediction
-outcome_vs_prediction <- 
-        ggplot(de3, aes(x = Prediction_Value, 
+outcome_vs_prediction_R <- 
+        ggplot(de5, aes(x = Prediction_Value, 
                         y = Cardiovascular_Disease,
                         color = Prediction_Model)) + 
         geom_point(alpha = 0.3) + 
@@ -318,14 +254,14 @@ outcome_vs_prediction <-
         ylab("Actual Outcome")
 
 # RMSE 
-RMSE_plot <- 
-        ggplot(RMSE, aes(x = Category,
+RMSE_R_plot <- 
+        ggplot(RMSE_R, aes(x = Category,
                          y = Value,
                          fill = Category)) + 
         geom_bar(stat = "identity", width = 0.8) +
         theme_bw() + 
         theme(axis.text.x = element_blank()) + 
-        ggtitle("Comparison of RMSE between Quasi-Poisson Regression and Random Forests")
+        ggtitle("RMSE")
 
 # Residuals 
 resid_fn <- function(df, xcol, ycol, c, tit) {
@@ -338,23 +274,23 @@ resid_fn <- function(df, xcol, ycol, c, tit) {
                 xlab("Prediction") + 
                 ylab("Residual") + 
                 ggtitle(tit) + 
-                ylim(NA, 400)
+                ylim(NA, 200)
 }
-residual_plotQ <- resid_fn(de2, 
-                           de2$predQ,
-                           de2$residQ,
+residual_plot_R1 <- resid_fn(de4, 
+                           de4$pred1,
+                           de4$resid1,
                            "#FF9999",
-                           "Residuals in Quasi-Poisson Regression")
+                           "Residuals in Model 1")
 
-residual_plotR <- resid_fn(de2, 
-                           de2$predR,
-                           de2$residR,
+residual_plot_R2 <- resid_fn(de4, 
+                           de4$pred2,
+                           de4$resid2,
                            "#009933",
-                           "Residuals in Random Forests") 
+                           "Residuals in Model 2") 
 
 
-grid.arrange(residual_plotQ,
-             residual_plotR, nrow = 1)
+grid.arrange(residual_plot_R1,
+             residual_plot_R2, nrow = 1)
 
 
 # Gain Curves
@@ -366,9 +302,9 @@ gain_curve <- function(df, model, tit) {
                 ylab("Fraction Total Sum Deaths from Cardiovascular Disease")
 }
 
-GainCurveQ <- gain_curve(de2, "predQ", "Quasi-Poisson Regression")
-GainCurveR <- gain_curve(de2, "predR", "Random Forests")
+GainCurve_R1 <- gain_curve(de4, "pred1", "Model 1")
+GainCurve_R2 <- gain_curve(de4, "pred2", "Model 2")
 
-grid.arrange(GainCurveQ, 
-             GainCurveR,
+grid.arrange(GainCurve_R1, 
+             GainCurve_R2,
              ncol = 1)
