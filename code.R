@@ -7,6 +7,10 @@ g <- glimpse
 h <- head
 s <- summary
 
+
+
+#################################### Importing and Data Cleaning ####################################
+
 # Importing data 
 region <- read_excel("CLASS.xls", sheet = 1, skip = 4)[-1, c(3, 4, 6, 7)]
 names(region) <- c("Country", 
@@ -150,6 +154,9 @@ de2_subset <- subset(de2_gathered, Cause %in% c("Cardiovascular_Disease",
                                                 "Respiratory_Disease"))      
 
 
+#################################### Fitting Models ####################################
+
+
 
 # Comparing mean vs variance: var >>>>> mean. Do quasipoisson regression
 mn <- mean(de2$Cardiovascular_Disease)
@@ -201,6 +208,9 @@ for (i in 1:4) {
 
 
 
+#################################### Evaludation ####################################
+
+
 
 de2 <- de2 %>%
         mutate(residQ = predQ - Cardiovascular_Disease,
@@ -217,6 +227,11 @@ RMSE <- de2 %>%
 Corr <- de2 %>% 
         summarize(corQ = cor(Cardiovascular_Disease, predQ),
                   corR = cor(Cardiovascular_Disease, predR))
+
+
+#################################### Additional Data Cleaning ####################################
+
+
 
 # data cleaning for plotting 
 de3 <- de2 %>%
