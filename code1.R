@@ -7,6 +7,10 @@ g <- glimpse
 h <- head
 s <- summary
 
+
+#################################### Importing and Data Cleaning ####################################
+
+
 # Importing data 
 region <- read_excel("CLASS.xls", sheet = 1, skip = 4)[-1, c(3, 4, 6, 7)]
 names(region) <- c("Country", 
@@ -151,6 +155,10 @@ de2_subset <- subset(de2_gathered, Cause %in% c("Cardiovascular_Disease",
 
 de4 <- de2
 
+
+#################################### Fitting Models ####################################
+
+
 # formula 
 
 fm1 <- as.formula(Cardiovascular_Disease ~ 
@@ -196,6 +204,9 @@ for (i in 1:4) {
 }
 
 
+
+#################################### Evaluation ####################################
+
 de4 <- de4 %>%
         mutate(resid1 = pred1 - Cardiovascular_Disease,
                resid2 = pred2 - Cardiovascular_Disease)
@@ -211,6 +222,11 @@ RMSE_R <- de4 %>%
 Corr_R <- de4 %>% 
         summarize(cor1 = cor(Cardiovascular_Disease, pred1),
                   cor2 = cor(Cardiovascular_Disease, pred2))
+
+
+#################################### Additional Data Cleaning ####################################
+
+
 
 # data cleaning for plotting 
 de5 <- de4 %>%
