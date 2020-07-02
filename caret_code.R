@@ -39,7 +39,38 @@ noncomm <- MakeTable_fn("UNdata_Export_noncommunicable.csv",
 
 de <- rbind(all, cancer, resp, comm, cvd, injur, noncomm) %>%
         spread(Cause, Value)
-  
+
+#################################### Raw Data Inspection ####################################
+
+rd_density <- subset(rbind(all, cancer, resp, comm, cvd, injur, noncomm),
+                     Cause != "All") %>%
+  ggplot(aes(x = Value, fill = Cause, color = Cause)) + 
+  geom_density(alpha = 0.3) +
+  theme_bw() + 
+  xlab("Number of Deaths") +
+  ylab("Density") +
+  ggtitle("Distribution of Death Number from Various Causes")
+
+
+rd_scatter <- gather(de, Cause, Number, c(Cancer, 
+                                          Communicable, 
+                                          Injury, 
+                                          Noncommunicable, 
+                                          Respiratory_Disease)) %>%
+  ggplot(aes(x = Number, y = Cardiovascular_Disease, color = Cause)) + 
+  geom_point(alpha = 0.3) + 
+  geom_smooth(se = F) + 
+  theme_bw() + 
+  xlab("Number of Deaths (from Other Causes)") +
+  ylab("Number of Deaths (from Cardiovascular Disease)") +
+  ggtitle("Number of Deaths from Various Causes")
+
+
+
+library(gridExtra)
+
+grid.arrange(rd_density, rd_scatter, ncol = 1)
+
 
 
 #################################### Fitting Models ####################################
@@ -72,7 +103,15 @@ myControl <- trainControl(method = "cv",
                           verboseIter = TRUE,
                           index = myFold)
 
-gm <- train(fm, de, method = "glm", trControl = myControl)
+gm <- train(fm, 
+            de, 
+            method = "glm", 
+            family = "quasipoisson", 
+            trControl = myControl,
+            preProcess = c("center",
+                           "scale",
+                           "pca",
+                           "spatialSign"))
 
 myGrid = expand.grid(mtry = 3:5,
                      splitrule = c("variance",
