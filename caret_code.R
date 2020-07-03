@@ -107,11 +107,7 @@ gm <- train(fm,
             de, 
             method = "glm", 
             family = "quasipoisson", 
-            trControl = myControl,
-            preProcess = c("center",
-                           "scale",
-                           "pca",
-                           "spatialSign"))
+            trControl = myControl)
 
 myGrid = expand.grid(mtry = 3:5,
                      splitrule = c("variance",
@@ -181,7 +177,7 @@ actual_vs_pred <- gather(de, Model, Value, c(gPred, rPred)) %>%
         ggplot(aes(x = Value, 
                    y = Cardiovascular_Disease, 
                    color = Model)) + 
-        geom_point(alpha = 0.5) + 
+        geom_point(alpha = 0.4) + 
         geom_smooth(method = "lm", se = F) +
         theme_bw() +
         ylab("Deaths from Cardiovascular Disease") + 
@@ -255,18 +251,17 @@ Fit_fn <- function(mod) {
                      obs = de$Cardiovascular_Disease)
 }
 
+Fit_data <- as.data.frame(rbind(Fit_fn(gm), Fit_fn(rf))) %>% 
+  mutate(Model = factor(m, levels = m)) %>%
+  gather(key = "Metric", value = "Value", -Model) 
 
-
-Fit_df <- as.data.frame(rbind(Fit_fn(gm), Fit_fn(rf))) %>% 
-        mutate(Model = factor(m, levels = m)) %>%
-        gather(key = "Metric", value = "Value", -Model) %>%
-        mutate(Metric = factor(Metric, levels = mtr)) %>%
-        ggplot(aes(x = Model,
-                   y = Value,
-                   fill = Model)) +
-        geom_bar(stat = "identity", alpha = 0.5, width = 0.8) +
-        geom_boxplot(data = rsm_tb1,
-                     aes(x = Model, y = Value, fill = Model)) + 
-        facet_grid(Metric ~., scales = "free_y") +
-        theme_bw() + 
-        ggtitle("Model Fit on Test Data")
+Fit_plot <- Fit_data %>%
+  ggplot(aes(x = Model,
+             y = Value,
+             fill = Model)) +
+  geom_bar(stat = "identity", alpha = 0.5, width = 0.8) +
+  geom_boxplot(data = rsm_tb1,
+               aes(x = Model, y = Value, fill = Model)) + 
+  facet_grid(Metric ~., scales = "free_y") +
+  theme_bw() + 
+  ggtitle("Model Fit on Test Data") 
