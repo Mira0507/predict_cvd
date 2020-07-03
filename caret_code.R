@@ -181,7 +181,7 @@ actual_vs_pred <- gather(de, Model, Value, c(gPred, rPred)) %>%
         ggplot(aes(x = Value, 
                    y = Cardiovascular_Disease, 
                    color = Model)) + 
-        geom_point(alpha = 0.3) + 
+        geom_point(alpha = 0.5) + 
         geom_smooth(method = "lm", se = F) +
         theme_bw() +
         ylab("Deaths from Cardiovascular Disease") + 
@@ -202,7 +202,53 @@ correlation <- data.frame(glm = cor(de$gPred,
         theme_bw() +
         ylab("Correlation Coefficient (Pearson's r)") +
         ggtitle("Correlation between Prediction and Actual Outcome") +
-        geom_text(nudge_y = 0.03)
+        geom_text(nudge_y = 0.03) 
+
+# Plotting Residuals
+resid_fn <- function(df, xcol, ycol, c, tit) {
+  ggplot(df, 
+         aes(x = xcol,
+             y = ycol)) + 
+    geom_point(alpha = 0.3, color = c) + 
+    geom_smooth(method = "lm", se = F) + 
+    theme_bw() + 
+    xlab("Prediction") + 
+    ylab("Residual") + 
+    ggtitle(tit) 
+}
+
+glm_residuals <- resid_fn(de, 
+                          de$gPred,
+                          de$gResid,
+                          "#FF9999",
+                          "Residuals in Quasi-poisson Regression")
+
+rf_residuals <- resid_fn(de, 
+                         de$rPred,
+                         de$rResid,
+                         "#009933",
+                         "Residuals in Random Forests")
+
+grid.arrange(glm_residuals,
+             rf_residuals,
+             nrow = 1)
+
+library(WVPlots)
+# Gain Curves
+gain_curve <- function(df, model, tit) {
+  GainCurvePlot(df, model, "Cardiovascular_Disease", tit) + 
+    theme_bw() +
+    xlab("Fraction Items in Sort Order") + 
+    ylab("Fraction Deaths from Cardiovascular Disease")
+}
+
+
+
+
+
+grid.arrange(gain_curve(de, "gPred", "Quasi-poisson Regression"), 
+             gain_curve(de, "rPred", "Random Forests"),
+             ncol = 1)
 
 Fit_fn <- function(mod) {
         postResample(pred = predict(mod, de),
