@@ -157,6 +157,7 @@ rsm_tb2 <- ggplot(rsm_tb1, aes(x = Model, y = Value, fill = Model)) +
         theme_bw() + 
         ggtitle("Training Fit")
         
+sd(de$Cardiovascular_Disease)
 
 
 ####################################### Prediction #########################################
@@ -253,7 +254,8 @@ Fit_fn <- function(mod) {
 
 Fit_data <- as.data.frame(rbind(Fit_fn(gm), Fit_fn(rf))) %>% 
   mutate(Model = factor(m, levels = m)) %>%
-  gather(key = "Metric", value = "Value", -Model) 
+  gather(key = "Metric", value = "Value", -Model)  %>%
+  mutate(Metric = factor(Metric, levels = mtr))
 
 Fit_plot <- Fit_data %>%
   ggplot(aes(x = Model,
